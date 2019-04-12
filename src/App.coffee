@@ -1,25 +1,37 @@
 mathjs = require('mathjs')
 DataRectangle = require('./data/rectangles')
 Rectangle = require('./elements/Rectangle')
+DataTriangle = require('./data/triangles')
+DataInvisibles = require('./data/invisibles')
+Triangle = require('./elements/Triangle')
 Stage = require('./data/stage')
 Bg = require('./elements/backgrounds/Bg')
 BgFile = require('./assets/bckgds/BgFile.png')
 BgFile2 = require('./assets/bckgds/BgFile2.png')
+BgFile3 = require('./assets/bckgds/BgFile3.png')
 audio = require('./assets/ost.mp3')
 Hero = require('./elements/Hero')
+Enemy = require('./elements/Enemy')
+DataEnemies = require('./data/enemies')
 sound = require 'Howler'
+Blocks = require('./elements/bloques/BlockCollectionView')
+Radio = require 'nanoevents'
+Deadpool = require('./elements/Invisible')
 
 class App extends PIXI.Application
   animation: true
   animationNodes: []
   rectangles: []
+  triangles: []
+  enemies: []
+  invisibles: []
   myStage: Stage
   hero: null
+  enemy: null
+  radio: new Radio()
   constructor: (w, h, o) ->
     super(w, h, o)
     document.body.appendChild @view
-    window.addEventListener 'keypress', @onKeyPress
-    window.addEventListener 'keyup', @onKeyUp
     @preload()
 
 
@@ -37,31 +49,10 @@ class App extends PIXI.Application
     sound.play()
     null
 
-  onKeyPress: (evt) =>
-    if evt.key is 'd'
-      @hero.x += 3
-
-    if evt.key is 'a'
-      @hero.x -= 3
-
-    if evt.key is 'w'
-      @hero.gravitySpeed = -6
-
-  onKeyUp: (evt) =>
-    if evt.key is 'd'
-      null
-
-    if evt.key is 'a'
-      null
-
-    if evt.key is 'w'
-      null
-
-
   build: =>
 #    @play()
 
-    @Bg = new Bg (BgFile)
+    @Bg = new Bg (BgFile3)
     @Bg2 = new Bg (BgFile2)
 
     container = new PIXI.Container
@@ -69,25 +60,42 @@ class App extends PIXI.Application
     container.addChild(@Bg)
     @stage.addChild container
 
-    @hero = new Hero(0xFF0040, 0, 0, 15, 15, 0)
-    @hero.x = 20
-    @hero.y = 500
+    @block = new Blocks(@)
+    @block.y = 0
+
+    @hero = new Hero(0xFFFF00, 0, 0, 15, 15, 0, @)
+    @hero.x = 10
+    @hero.y = 530
     @addAnimationNodes @hero
     @stage.addChild @hero
 
-    for s in DataRectangle
-      rectangle = new Rectangle(s, @)
-      @stage.addChild(rectangle)
-      @rectangles.push(rectangle)
+#    for s in DataRectangle
+#      rectangle = new Rectangle(s, @)
+#      @stage.addChild(rectangle)
+#      @rectangles.push(rectangle)
 
-  collision: (player, arr) ->
-    for n in arr
-      if (player.x < n.x + n.width && player.x + player.width > n.x && player.y < n.y + n.height && player.height + player.y > n.y)
-        console.log 'chocaste!'
-        @hero.gravitySpeed = -@hero.gravity
-      else
-        @hero.gravity = 0.6
+    for t in DataTriangle
+      triangle = new Triangle(t, @)
+      @stage.addChild(triangle)
+      @triangles.push(triangle)
 
+    for e in DataEnemies
+      enemy = new Enemy(e, @)
+      @stage.addChild(enemy)
+      @enemies.push(enemy)
+
+    @win = new Deadpool(@)
+    @win.x = 20
+    @win.y = 120
+    @win.alpha = 1
+    @stage.addChild @win
+
+  collision: (player, obj) ->
+    if (player.x < obj.x + obj.width && player.x + player.width > obj.x && player.y < obj.y + obj.height && player.height + player.y > obj.y)
+      @win.alpha = 0
+      @win.x = 0
+      @win.y = 0
+      alert("¡Ganaste!")
 
   addAnimationNodes: (child) =>
     @animationNodes.push child
@@ -95,7 +103,8 @@ class App extends PIXI.Application
 
   animate: =>
     @ticker.add (evt) =>
-      @collision(@hero, @rectangles)
+      @hero.Die(@enemies)
+      @collision(@hero, @win)
       for n in @animationNodes
         n.animate?()
 
